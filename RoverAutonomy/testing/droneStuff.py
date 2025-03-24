@@ -1,7 +1,6 @@
 from pymavlink import mavutil
 import time
  
- 
 PORT = "COM5"
 BAUDRATE = 115200  
  
