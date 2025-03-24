@@ -1,0 +1,7 @@
+all: build server
+
+build: runTest.o
+	g++ ./src/serial_comm.cpp -o runTest
+	
+clean:
+	\rm *.o runTest
