@@ -15,7 +15,7 @@ MIN_V = 530
 
 STATUS = 0
 
-TURN_DELAY = .5 #seconds
+TURN_DELAY = 2 #seconds
 
 # Constants for RC values
 RC_NEUTRAL = 1500
@@ -34,6 +34,28 @@ master = mavutil.mavlink_connection(PORT, baud=BAUDRATE)
 print("Waiting for heartbeat...")
 master.wait_heartbeat()
 print(f"Connected to system {master.target_system}, component {master.target_component}")
+
+def is_armed():
+    msg = master.recv_match(type="HEARTBEAT", blocking=True)
+    return msg.base_mode & mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED
+
+def arm_vehicle():
+    print("Arming rover...")
+    master.arducopter_arm()
+    time.sleep(1)
+    while not is_armed():
+        print("Waiting for arming...")
+        time.sleep(1)
+    print("Rover armed!")
+
+def disarm():
+    print("Disarming rover...")
+    master.arducopter_disarm()
+    time.sleep(1)
+    while is_armed():
+        print("Waiting for disarm...")
+        time.sleep(1)
+    print("Rover disarmed.")
 
 def send_rc_command(left_motor, right_motor, propeller_1=1500, propeller_2=1500):
     """
@@ -127,9 +149,9 @@ def avoidObstacle():
 
   # continue straight
   send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
-  time.sleep(.2)
+  time.sleep(.5)
   send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL+200)
-  time.sleep(.3) #seconds
+  time.sleep(1) #seconds
 
   # turn left
   send_rc_command(RC_NEUTRAL-200, RC_NEUTRAL+200)
@@ -152,64 +174,74 @@ def unavaliable():
 
 
 def main():
+  try:
+    master.mav.param_set_send(
+      master.target_system, master.target_component,
+      b'ARMING_CHECK',
+      float(0),
+      mavutil.mavlink.MAV_PARAM_TYPE_INT32
+    )
 
-  arm_vehicle()
+    arm_vehicle()
+    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
   # out = cv2.VideoWriter('demonstration.avi', cv2.VideoWriter_fourcc(*'MJPG'), 10, (1280, 720))
 
-  width, height = 1280, 720
-  center_x, center_y = (width//2, height//2) # center of the frame
-  obstructed = 0
+    width, height = 1280, 720
+    center_x, center_y = (width//2, height//2) # center of the frame
+    obstructed = 0
 
-  zed, init_params, image, runtime_parameters, zed_pointcloud = zedSetup()
-  err = zed.open(init_params)
-  if err != sl.ERROR_CODE.SUCCESS:
-    print("Camera open: " + repr(err) + ". Exit program.")
-    unavaliable()
+    zed, init_params, image, runtime_parameters, zed_pointcloud = zedSetup()
+    err = zed.open(init_params)
+    if err != sl.ERROR_CODE.SUCCESS:
+      print("Camera open: " + repr(err) + ". Exit program.")
+      unavaliable()
 
-  STATUS = 1
+    STATUS = 1
 
-  while True:
-    #print(STATUS)
-    ## TODO: make send status to flight controller
+    while True:
+      #print(STATUS)
+      ## TODO: make send status to flight controller
 
-    if zed.grab(runtime_parameters) == sl.ERROR_CODE.SUCCESS:
-      zed.retrieve_image(image, sl.VIEW.LEFT)
-      cvimg = image.get_data()
-      #img = cv2.cvtColor(cvimg, cv2.COLOR_RGBA2RGB)
+      if zed.grab(runtime_parameters) == sl.ERROR_CODE.SUCCESS:
+        zed.retrieve_image(image, sl.VIEW.LEFT)
+        cvimg = image.get_data()
+        #img = cv2.cvtColor(cvimg, cv2.COLOR_RGBA2RGB)
 
-      zed.retrieve_measure(zed_pointcloud, sl.MEASURE.XYZRGBA)
-      np_pointcloud = zed_pointcloud.get_data()
-      np_pointcloud = np_pointcloud[MIN_U:MAX_U, MIN_V:MAX_V, :3] # convert pointcloud to interest dimensions
+        zed.retrieve_measure(zed_pointcloud, sl.MEASURE.XYZRGBA)
+        np_pointcloud = zed_pointcloud.get_data()
+        np_pointcloud = np_pointcloud[MIN_U:MAX_U, MIN_V:MAX_V, :3] # convert pointcloud to interest dimensions
 
-      np_distance = np.sqrt(np.sum(np_pointcloud ** 2, axis = 2)) # create array of distances
+        np_distance = np.sqrt(np.sum(np_pointcloud ** 2, axis = 2)) # create array of distances
 
-      closePoint = np.nanmin(np_distance)
+        closePoint = np.nanmin(np_distance)
 
-      pathObstructed = closePoint < 2000
+        pathObstructed = closePoint < 2000
 
-      #cv2.rectangle(img, (MIN_V, MIN_U), (MAX_V, MAX_U), (0, 0, 0), 2)
+        #cv2.rectangle(img, (MIN_V, MIN_U), (MAX_V, MAX_U), (0, 0, 0), 2)
 
-      if pathObstructed:
-        color = (0, 0, 255)
-        obstructed += 1
-      else:
-        color = (255, 0, 0)
-        obstructed -= 1
+        if pathObstructed:
+          color = (0, 0, 255)
+          obstructed += 1
+        else:
+          color = (255, 0, 0)
+          obstructed -= 1
 
-      #cv2.putText(img, str(closePoint)[0:4] + " mm", (center_x, center_y), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2, cv2.LINE_AA)
+        #cv2.putText(img, str(closePoint)[0:4] + " mm", (center_x, center_y), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2, cv2.LINE_AA)
 
-      if obstructed > 30:
-        avoidObstacle()
-        obstructed = -15
+        if obstructed > 30:
+          avoidObstacle()
+          obstructed = -15
 
-    #cv2.imshow("Detection and Path", img)
-    # out.write(img)
+      #cv2.imshow("Detection and Path", img)
+      # out.write(img)
 
-    if cv2.waitKey(20) == 27:
-      break
+      if cv2.waitKey(20) == 27:
+        break
     
-  zed.close()
-  disarm()
+
+  except KeyboardInterrupt:
+    zed.close()
+    disarm()
  
 if __name__ == "__main__":
   main()
