@@ -48,6 +48,15 @@ def arm_vehicle():
         time.sleep(1)
     print("Rover armed!")
 
+def disarm_vehicle():
+    print("Disarming rover...")
+    master.arducopter_disarm()
+    time.sleep(1)
+    while is_armed():
+        print("Waiting for disarm...")
+        time.sleep(1)
+    print("Rover disarmed.")
+
 def send_rc_command(left_motor, right_motor, propeller_1=1500, propeller_2=1500):
     """
     Sends RC override commands to the specified channels.
@@ -105,15 +114,17 @@ def avoidObstacle():
   # print("Now in GUIDED mode")
 
   # turn right
-  send_rc_command(RC_NEUTRAL+100, RC_NEUTRAL-100)
+  send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL-200)
   time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
 
   # continue straight
-  send_rc_command(RC_NEUTRAL+100, RC_NEUTRAL+100)
+  send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+  time.sleep(.2)
+  send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL+200)
   time.sleep(.3) #seconds
 
   # turn left
-  send_rc_command(RC_NEUTRAL-100, RC_NEUTRAL+100)
+  send_rc_command(RC_NEUTRAL-200, RC_NEUTRAL+200)
   time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
 
   send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
@@ -133,6 +144,13 @@ def unavaliable():
 
 
 def main():
+
+  master.mav.param_set_send(
+    master.target_system, master.target_component,
+    b'ARMING_CHECK',
+    float(0),
+    mavutil.mavlink.MAV_PARAM_TYPE_INT32
+  )
 
   arm_vehicle()
   # out = cv2.VideoWriter('demonstration.avi', cv2.VideoWriter_fourcc(*'MJPG'), 10, (1280, 720))
@@ -190,6 +208,7 @@ def main():
       break
     
   zed.close()
+  disarm()
  
 if __name__ == "__main__":
   main()
