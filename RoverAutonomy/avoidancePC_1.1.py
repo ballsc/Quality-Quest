@@ -1,4 +1,4 @@
-from ultralytics import YOLO
+#from ultralytics import YOLO
 import cv2
 import pyzed.sl as sl
 import math
@@ -6,10 +6,10 @@ import numpy as np
 import sys
 import time
 
-# from pymavlink import mavutil
+from pymavlink import mavutil
 
 MAX_U = 450 ## between 0 and 719
-MIN_U = 160
+MIN_U = 200
 MAX_V = 750 ## between 0 and 1279
 MIN_V = 530
 
@@ -23,39 +23,39 @@ RC_MIN = 1000
 RC_MAX = 2000
 
 # Connection parameters
-PORT = "COM5"  # Adjust as per your CubePilot's port
+PORT = "/dev/ttyACM0"  # Adjust as per your CubePilot's port
 BAUDRATE = 115200
 
-# # Connect to the CubePilot Rover
-# print("Connecting to CubePilot Rover...")
-# master = mavutil.mavlink_connection(PORT, baud=BAUDRATE)
+ # Connect to the CubePilot Rover
+print("Connecting to CubePilot Rover...")
+master = mavutil.mavlink_connection(PORT, baud=BAUDRATE)
 
-# # Wait for heartbeat
-# print("Waiting for heartbeat...")
-# master.wait_heartbeat()
-# print(f"Connected to system {master.target_system}, component {master.target_component}")
+# Wait for heartbeat
+print("Waiting for heartbeat...")
+master.wait_heartbeat()
+print(f"Connected to system {master.target_system}, component {master.target_component}")
 
-# def send_rc_command(left_motor, right_motor, propeller_1=1500, propeller_2=1500):
-#     """
-#     Sends RC override commands to the specified channels.
-#     """
-#     # Enforce throttle limits
-#     left_motor = max(min(left_motor, RC_MAX), RC_MIN)
-#     right_motor = max(min(right_motor, RC_MAX), RC_MIN)
-#     propeller_1 = max(min(propeller_1, RC_MAX), RC_MIN)
-#     propeller_2 = max(min(propeller_2, RC_MAX), RC_MIN)
+def send_rc_command(left_motor, right_motor, propeller_1=1500, propeller_2=1500):
+    """
+    Sends RC override commands to the specified channels.
+    """
+    # Enforce throttle limits
+    left_motor = max(min(left_motor, RC_MAX), RC_MIN)
+    right_motor = max(min(right_motor, RC_MAX), RC_MIN)
+    propeller_1 = max(min(propeller_1, RC_MAX), RC_MIN)
+    propeller_2 = max(min(propeller_2, RC_MAX), RC_MIN)
 
-#     # Send RC override command
-#     master.mav.rc_channels_override_send(
-#         master.target_system,
-#         master.target_component,
-#         left_motor,  # Channel 1 - Left motor
-#         right_motor, # Channel 3 - Right motor
-#         propeller_1, # Channel 4 - Propeller 1
-#         0,           # Channel 5 - Unused
-#         propeller_2, # Channel 6 - Propeller 2
-#         0, 0, 0, 0   # Channels 7 to 10 - Unused
-#     )
+    # Send RC override command
+    master.mav.rc_channels_override_send(
+        master.target_system,
+        master.target_component,
+        left_motor,  # Channel 1 - Left motor
+        right_motor, # Channel 3 - Right motor
+        propeller_1, # Channel 4 - Propeller 1
+        0,           # Channel 5 - Unused
+        propeller_2, # Channel 6 - Propeller 2
+        0, 0, 0, 0   # Channels 7 to 10 - Unused
+    )
 
 def zedSetup():
 
@@ -92,18 +92,18 @@ def avoidObstacle():
   # print("Now in GUIDED mode")
 
   # turn right
-  # send_rc_command(RC_NEUTRAL+100, RC_NEUTRAL-100)
-  # time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
+  send_rc_command(RC_NEUTRAL+100, RC_NEUTRAL-100)
+  time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
 
-  # # continue straight
-  # send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
-  # time.sleep(.3) #seconds
+  # continue straight
+  send_rc_command(RC_NEUTRAL+100, RC_NEUTRAL+100)
+  time.sleep(.3) #seconds
 
-  # # turn left
-  # send_rc_command(RC_NEUTRAL-100, RC_NEUTRAL+100)
-  # time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
+  # turn left
+  send_rc_command(RC_NEUTRAL-100, RC_NEUTRAL+100)
+  time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
 
-  # send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+  send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
 
   # # Switch back to AUTO mode
   # master.mav.set_mode_send(
@@ -136,13 +136,13 @@ def main():
   STATUS = 1
 
   while True:
-    print(STATUS)
+    #print(STATUS)
     ## TODO: make send status to flight controller
 
     if zed.grab(runtime_parameters) == sl.ERROR_CODE.SUCCESS:
       zed.retrieve_image(image, sl.VIEW.LEFT)
       cvimg = image.get_data()
-      img = cv2.cvtColor(cvimg, cv2.COLOR_RGBA2RGB)
+      #img = cv2.cvtColor(cvimg, cv2.COLOR_RGBA2RGB)
 
       zed.retrieve_measure(zed_pointcloud, sl.MEASURE.XYZRGBA)
       np_pointcloud = zed_pointcloud.get_data()
@@ -154,7 +154,7 @@ def main():
 
       pathObstructed = closePoint < 2000
 
-      cv2.rectangle(img, (MIN_V, MIN_U), (MAX_V, MAX_U), (0, 0, 0), 2)
+      #cv2.rectangle(img, (MIN_V, MIN_U), (MAX_V, MAX_U), (0, 0, 0), 2)
 
       if pathObstructed:
         color = (0, 0, 255)
@@ -163,13 +163,13 @@ def main():
         color = (255, 0, 0)
         obstructed -= 1
 
-      cv2.putText(img, str(closePoint)[0:4] + " mm", (center_x, center_y), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2, cv2.LINE_AA)
+      #cv2.putText(img, str(closePoint)[0:4] + " mm", (center_x, center_y), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2, cv2.LINE_AA)
 
       if obstructed > 30:
         avoidObstacle()
         obstructed = -15
 
-    cv2.imshow("Detection and Path", img)
+    #cv2.imshow("Detection and Path", img)
     # out.write(img)
 
     if cv2.waitKey(20) == 27:
