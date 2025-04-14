@@ -57,11 +57,11 @@ def arm_vehicle():
     mavutil.mavlink.MAV_PARAM_TYPE_INT32)
 
     master.arducopter_arm()
-    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
     time.sleep(1)
     while not is_armed():
         print("Waiting for arming...")
         time.sleep(1)
+    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
     print("Rover armed!")
 
 def disarm_vehicle():
@@ -74,19 +74,33 @@ def disarm_vehicle():
     print("Rover disarmed.")
 
 def test():
-    send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL+200)
-    time.sleep(1)
+#    for i in range(11, 21):
+#        send_rc_command(i*100, 3100-i*100)
+#        print(i*100)
+#        time.sleep(2)
+
+    send_rc_command(1800, 1200)
+    time.sleep(5)
+
+#    print("Forward")
+#    send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL+200)
+#    time.sleep(2)
     
-    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
-    time.sleep(1)
+#    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+#    time.sleep(5)
 
-    send_rc_command(RC_NEUTRAL-200, RC_NEUTRAL+200)
-    time.sleep(1)
+#    print("Right")
+#    send_rc_command(RC_NEUTRAL-200, RC_NEUTRAL+200)
+#    time.sleep(2)
 
-    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
-    time.sleep(1)
+#    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+#    time.sleep(5)
 
-    send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL-200)
-    time.sleep(1)
+  #  print("Left")
+ #   send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL-200)
+#    time.sleep(2)
 
+arm_vehicle()
+time.sleep(5)
 test()
+disarm_vehicle()
