@@ -35,28 +35,6 @@ print("Waiting for heartbeat...")
 master.wait_heartbeat()
 print(f"Connected to system {master.target_system}, component {master.target_component}")
 
-def is_armed():
-    msg = master.recv_match(type="HEARTBEAT", blocking=True)
-    return msg.base_mode & mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED
-
-def arm_vehicle():
-    print("Arming rover...")
-    master.arducopter_arm()
-    time.sleep(1)
-    while not is_armed():
-        print("Waiting for arming...")
-        time.sleep(1)
-    print("Rover armed!")
-
-def disarm_vehicle():
-    print("Disarming rover...")
-    master.arducopter_disarm()
-    time.sleep(1)
-    while is_armed():
-        print("Waiting for disarm...")
-        time.sleep(1)
-    print("Rover disarmed.")
-
 def send_rc_command(left_motor, right_motor, propeller_1=1500, propeller_2=1500):
     """
     Sends RC override commands to the specified channels.
@@ -78,6 +56,36 @@ def send_rc_command(left_motor, right_motor, propeller_1=1500, propeller_2=1500)
         propeller_2, # Channel 6 - Propeller 2
         0, 0, 0, 0   # Channels 7 to 10 - Unused
     )
+
+def is_armed():
+    msg = master.recv_match(type="HEARTBEAT", blocking=True)
+    return msg.base_mode & mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED
+
+def arm_vehicle():
+    print("Arming rover...")
+
+    master.mav.param_set_send(
+    master.target_system, master.target_component,
+    b'ARMING_CHECK',
+    float(0),
+    mavutil.mavlink.MAV_PARAM_TYPE_INT32)
+
+    master.arducopter_arm()
+    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+    time.sleep(1)
+    while not is_armed():
+        print("Waiting for arming...")
+        time.sleep(1)
+    print("Rover armed!")
+
+def disarm_vehicle():
+    print("Disarming rover...")
+    master.arducopter_disarm()
+    time.sleep(1)
+    while is_armed():
+        print("Waiting for disarm...")
+        time.sleep(1)
+    print("Rover disarmed.")
 
 def zedSetup():
 
@@ -144,13 +152,6 @@ def unavaliable():
 
 
 def main():
-
-  master.mav.param_set_send(
-    master.target_system, master.target_component,
-    b'ARMING_CHECK',
-    float(0),
-    mavutil.mavlink.MAV_PARAM_TYPE_INT32
-  )
 
   arm_vehicle()
   # out = cv2.VideoWriter('demonstration.avi', cv2.VideoWriter_fourcc(*'MJPG'), 10, (1280, 720))
