@@ -50,18 +50,34 @@ def is_armed():
 def arm_vehicle():
     print("Arming rover...")
 
+    # Disable pre-arm checks
     master.mav.param_set_send(
-    master.target_system, master.target_component,
-    b'ARMING_CHECK',
-    float(0),
-    mavutil.mavlink.MAV_PARAM_TYPE_INT32)
+        master.target_system, master.target_component,
+        b'ARMING_CHECK',
+        float(0),
+        mavutil.mavlink.MAV_PARAM_TYPE_INT32
+    )
 
-    master.arducopter_arm()
+    # Ensure RC is neutral first
+    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+    time.sleep(0.5)
+
+    # Switch to GUIDED mode
+    mode_id = master.mode_mapping()['GUIDED']
+    master.set_mode(mode_id)
     time.sleep(1)
+
+    # Arm the vehicle
+    master.arducopter_arm()
+    time.sleep(0.5)
+
+    # Send neutral again to override any glitch
+    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+
+    # Wait for arming
     while not is_armed():
         print("Waiting for arming...")
         time.sleep(1)
-    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
     print("Rover armed!")
 
 def disarm_vehicle():
