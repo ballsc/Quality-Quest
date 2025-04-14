@@ -21,13 +21,13 @@ print("Waiting for heartbeat...")
 master.wait_heartbeat()
 print(f"Connected to system {master.target_system}, component {master.target_component}")
 
-def send_rc_command(left_motor, right_motor, propeller_1=1500, propeller_2=1500):
+def send_rc_command(turn_motor, straight_motor, propeller_1=1500, propeller_2=1500):
     """
     Sends RC override commands to the specified channels.
     """
     # Enforce throttle limits
-    left_motor = max(min(left_motor, RC_MAX), RC_MIN)
-    right_motor = max(min(right_motor, RC_MAX), RC_MIN)
+    turn_motor = max(min(turn_motor, RC_MAX), RC_MIN)
+    straight_motor = max(min(straight_motor, RC_MAX), RC_MIN)
     propeller_1 = max(min(propeller_1, RC_MAX), RC_MIN)
     propeller_2 = max(min(propeller_2, RC_MAX), RC_MIN)
 
@@ -35,12 +35,13 @@ def send_rc_command(left_motor, right_motor, propeller_1=1500, propeller_2=1500)
     master.mav.rc_channels_override_send(
         master.target_system,
         master.target_component,
-        left_motor,  # Channel 1 - Left motor
-        right_motor, # Channel 3 - Right motor
+        turn_motor,  # Channel 1 - Left motor
+        0,
+        straight_motor, # Channel 3 - Right motor
         propeller_1, # Channel 4 - Propeller 1
         0,           # Channel 5 - Unused
         propeller_2, # Channel 6 - Propeller 2
-        0, 0, 0, 0   # Channels 7 to 10 - Unused
+        0, 0, 0   # Channels 7 to 10 - Unused
     )
 
 def is_armed():
@@ -63,9 +64,9 @@ def arm_vehicle():
     time.sleep(0.5)
 
     # Switch to GUIDED mode
-    mode_id = master.mode_mapping()['GUIDED']
-    master.set_mode(mode_id)
-    time.sleep(1)
+#    mode_id = master.mode_mapping()['GUIDED']
+#    master.set_mode(mode_id)
+#    time.sleep(1)
 
     # Arm the vehicle
     master.arducopter_arm()
@@ -94,27 +95,34 @@ def test():
 #        send_rc_command(i*100, 3100-i*100)
 #        print(i*100)
 #        time.sleep(2)
+    print("Testing")
+#    send_rc_command(1800, 1500)
+#    time.sleep(5)
 
-    send_rc_command(1800, 1200)
-    time.sleep(5)
-
-#    print("Forward")
-#    send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL+200)
-#    time.sleep(2)
+    print("Forward")
+    send_rc_command(RC_NEUTRAL, RC_NEUTRAL+200)
+    time.sleep(2)
     
-#    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
-#    time.sleep(5)
+    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+    time.sleep(3)
 
-#    print("Right")
-#    send_rc_command(RC_NEUTRAL-200, RC_NEUTRAL+200)
-#    time.sleep(2)
+    print("Backwards")
+    send_rc_command(RC_NEUTRAL, RC_NEUTRAL-200)
+    time.sleep(2)
 
-#    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
-#    time.sleep(5)
+    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+    time.sleep(3)
 
-  #  print("Left")
- #   send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL-200)
-#    time.sleep(2)
+    print("Left")
+    send_rc_command(RC_NEUTRAL-200, RC_NEUTRAL)
+    time.sleep(2)
+
+    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+    time.sleep(3)
+
+    print("Right")
+    send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL)
+    time.sleep(2)
 
 arm_vehicle()
 time.sleep(5)

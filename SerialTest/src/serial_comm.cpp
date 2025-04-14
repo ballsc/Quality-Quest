@@ -44,9 +44,32 @@ void setBits(struct termios &tty, int BAUD_RATE) {
     cfsetospeed(&tty, BAUD_RATE);
 };
 
+void writeBufferToFile(const char* filename, const char* buffer, int size) {
+    FILE* file = fopen(filename, "w");
+    if (!file) {
+        printf("Error opening file '%s': %s\n", filename, strerror(errno));
+        return;
+    }
+
+    fwrite(buffer, sizeof(char), size, file);
+    fclose(file);
+}
+
 int test(){
-    int port1 = open("/dev/tty0");
-    int port2 = open("/dev/tty1");
+    int port1 = open("/dev/ttyUSB0", O_RDWR);
+    int port2 = open("/dev/ttyUSB1", O_RDWR);
+
+    if (port1 < 0) {
+        printf("Error while opening port1, errno = %s\n", strerror(errno));
+        perror("Something went wrong with open()");
+        exit(1);
+    }
+
+    if (port2 < 0) {
+        printf("Error while opening port2, errno = %s\n", strerror(errno));
+        perror("Something went wrong with open()");
+        exit(1);
+    }
 
     struct termios tty0; // sender
     struct termios tty1; // reciever
@@ -88,7 +111,7 @@ int test(){
     */
 
     char readIn [256];
-    unsigned char writeOut[] = { '0', '0', '0', '0', '0', '\r' };
+    unsigned char writeOut[] = { '1', '0', '1', '0', '0', '\r' };
 
     write(port1, writeOut, sizeof(writeOut));
 
@@ -111,13 +134,6 @@ int test(){
     return 1;
 }
 
-void writeBufferToFile(const char* filename, const char* buffer, int size) {
-    FILE* file = fopen(filename, "w");
-    if (!file) {
-        printf("Error opening file '%s': %s\n", filename, strerror(errno));
-        return;
-    }
-
-    fwrite(buffer, sizeof(char), size, file);
-    fclose(file);
+int main() {
+    test();
 }

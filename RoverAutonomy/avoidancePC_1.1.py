@@ -71,12 +71,13 @@ def send_rc_command(left_motor, right_motor, propeller_1=1500, propeller_2=1500)
     master.mav.rc_channels_override_send(
         master.target_system,
         master.target_component,
-        left_motor,  # Channel 1 - Left motor
-        right_motor, # Channel 3 - Right motor
+        left_motor,  # Channel 1 - left or right
+        0,
+        right_motor, # Channel 3 - forward or backward
         propeller_1, # Channel 4 - Propeller 1
         0,           # Channel 5 - Unused
         propeller_2, # Channel 6 - Propeller 2
-        0, 0, 0, 0   # Channels 7 to 10 - Unused
+        0, 0, 0   # Channels 7 to 10 - Unused
     )
 
 def is_armed():
@@ -91,6 +92,8 @@ def arm_vehicle():
     b'ARMING_CHECK',
     float(0),
     mavutil.mavlink.MAV_PARAM_TYPE_INT32)
+
+    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
 
     master.arducopter_arm()
     send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
@@ -125,7 +128,9 @@ def zedSetup():
   return zed, init_params, sl.Mat(), sl.RuntimeParameters(), sl.Mat()
 
 def avoidObstacle():
-  print("avoiding obstacle")
+  print("")
+  print("Avoiding obstacle")
+  print("")
   ## TODO: FINISH, Check with COOPER if code is syntax with his
 
   # # Switch to GUIDED mode
@@ -144,18 +149,18 @@ def avoidObstacle():
   # print("Now in GUIDED mode")
 
   # turn right
-  send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL-200)
+  send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL)
   time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
 
   # continue straight
-  send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
-  time.sleep(.5)
-  send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL+200)
-  time.sleep(1) #seconds
+#  send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+#  time.sleep(.5)
+#  send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL+200)
+#  time.sleep(1) #seconds
 
   # turn left
-  send_rc_command(RC_NEUTRAL-200, RC_NEUTRAL+200)
-  time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
+#  send_rc_command(RC_NEUTRAL-200, RC_NEUTRAL+200)
+#  time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
 
   send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
 
@@ -175,15 +180,9 @@ def unavaliable():
 
 def main():
   try:
-    master.mav.param_set_send(
-      master.target_system, master.target_component,
-      b'ARMING_CHECK',
-      float(0),
-      mavutil.mavlink.MAV_PARAM_TYPE_INT32
-    )
 
     arm_vehicle()
-    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+
   # out = cv2.VideoWriter('demonstration.avi', cv2.VideoWriter_fourcc(*'MJPG'), 10, (1280, 720))
 
     width, height = 1280, 720
@@ -217,6 +216,8 @@ def main():
 
         pathObstructed = closePoint < 2000
 
+        print("Distance to object: ", closePoint)
+
         #cv2.rectangle(img, (MIN_V, MIN_U), (MAX_V, MAX_U), (0, 0, 0), 2)
 
         if pathObstructed:
@@ -225,10 +226,11 @@ def main():
         else:
           color = (255, 0, 0)
           obstructed -= 1
+          obstructed = max(obstructed, 0)
 
         #cv2.putText(img, str(closePoint)[0:4] + " mm", (center_x, center_y), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2, cv2.LINE_AA)
 
-        if obstructed > 30:
+        if obstructed > 15:
           avoidObstacle()
           obstructed = -15
 
