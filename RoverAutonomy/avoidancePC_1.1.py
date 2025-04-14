@@ -134,6 +134,7 @@ def unavaliable():
 
 def main():
 
+  arm_vehicle()
   # out = cv2.VideoWriter('demonstration.avi', cv2.VideoWriter_fourcc(*'MJPG'), 10, (1280, 720))
 
   width, height = 1280, 720
