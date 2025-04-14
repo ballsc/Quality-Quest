@@ -35,6 +35,19 @@ print("Waiting for heartbeat...")
 master.wait_heartbeat()
 print(f"Connected to system {master.target_system}, component {master.target_component}")
 
+def is_armed():
+    msg = master.recv_match(type="HEARTBEAT", blocking=True)
+    return msg.base_mode & mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED
+
+def arm_vehicle():
+    print("Arming rover...")
+    master.arducopter_arm()
+    time.sleep(1)
+    while not is_armed():
+        print("Waiting for arming...")
+        time.sleep(1)
+    print("Rover armed!")
+
 def send_rc_command(left_motor, right_motor, propeller_1=1500, propeller_2=1500):
     """
     Sends RC override commands to the specified channels.
