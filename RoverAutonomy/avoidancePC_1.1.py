@@ -5,6 +5,7 @@ import math
 import numpy as np
 import sys
 import time
+import rover_h as r
 
 from pymavlink import mavutil
 
@@ -12,8 +13,6 @@ MAX_U = 450 ## between 0 and 719
 MIN_U = 200
 MAX_V = 750 ## between 0 and 1279
 MIN_V = 530
-
-STATUS = 0
 
 TURN_DELAY = 2 #seconds
 
@@ -35,82 +34,6 @@ print("Waiting for heartbeat...")
 master.wait_heartbeat()
 print(f"Connected to system {master.target_system}, component {master.target_component}")
 
-def is_armed():
-    msg = master.recv_match(type="HEARTBEAT", blocking=True)
-    return msg.base_mode & mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED
-
-def arm_vehicle():
-    print("Arming rover...")
-    master.arducopter_arm()
-    time.sleep(1)
-    while not is_armed():
-        print("Waiting for arming...")
-        time.sleep(1)
-    print("Rover armed!")
-
-def disarm():
-    print("Disarming rover...")
-    master.arducopter_disarm()
-    time.sleep(1)
-    while is_armed():
-        print("Waiting for disarm...")
-        time.sleep(1)
-    print("Rover disarmed.")
-
-def send_rc_command(left_motor, right_motor, propeller_1=1500, propeller_2=1500):
-    """
-    Sends RC override commands to the specified channels.
-    """
-    # Enforce throttle limits
-    left_motor = max(min(left_motor, RC_MAX), RC_MIN)
-    right_motor = max(min(right_motor, RC_MAX), RC_MIN)
-    propeller_1 = max(min(propeller_1, RC_MAX), RC_MIN)
-    propeller_2 = max(min(propeller_2, RC_MAX), RC_MIN)
-
-    # Send RC override command
-    master.mav.rc_channels_override_send(
-        master.target_system,
-        master.target_component,
-        left_motor,  # Channel 1 - left or right
-        0,
-        right_motor, # Channel 3 - forward or backward
-        propeller_1, # Channel 4 - Propeller 1
-        0,           # Channel 5 - Unused
-        propeller_2, # Channel 6 - Propeller 2
-        0, 0, 0   # Channels 7 to 10 - Unused
-    )
-
-def is_armed():
-    msg = master.recv_match(type="HEARTBEAT", blocking=True)
-    return msg.base_mode & mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED
-
-def arm_vehicle():
-    print("Arming rover...")
-
-    master.mav.param_set_send(
-    master.target_system, master.target_component,
-    b'ARMING_CHECK',
-    float(0),
-    mavutil.mavlink.MAV_PARAM_TYPE_INT32)
-
-    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
-
-    master.arducopter_arm()
-    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
-    time.sleep(1)
-    while not is_armed():
-        print("Waiting for arming...")
-        time.sleep(1)
-    print("Rover armed!")
-
-def disarm_vehicle():
-    print("Disarming rover...")
-    master.arducopter_disarm()
-    time.sleep(1)
-    while is_armed():
-        print("Waiting for disarm...")
-        time.sleep(1)
-    print("Rover disarmed.")
 
 def zedSetup():
 
@@ -149,20 +72,22 @@ def avoidObstacle():
   # print("Now in GUIDED mode")
 
   # turn right
-  send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL)
+  r.send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL)
   time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
 
   # continue straight
-#  send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
-#  time.sleep(.5)
-#  send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL+200)
-#  time.sleep(1) #seconds
+  r.send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+  time.sleep(.2)
+  r.send_rc_command(RC_NEUTRAL, RC_NEUTRAL+200)
+  time.sleep(1) #seconds
 
   # turn left
-#  send_rc_command(RC_NEUTRAL-200, RC_NEUTRAL+200)
-#  time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
+  r.send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+  time.sleep(.2)
+  r.send_rc_command(RC_NEUTRAL-200, RC_NEUTRAL)
+  time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
 
-  send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+  r.send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
 
   # # Switch back to AUTO mode
   # master.mav.set_mode_send(
@@ -174,19 +99,18 @@ def avoidObstacle():
   return 1
 
 def unavaliable():
+  r.disarm()
   while(1):
-    STATUS = 0
-
+    print("Autonomy Unavaliable")
+    time.sleep(5)
 
 def main():
   try:
 
-    arm_vehicle()
+    r.arm_vehicle()
 
-  # out = cv2.VideoWriter('demonstration.avi', cv2.VideoWriter_fourcc(*'MJPG'), 10, (1280, 720))
+    # out = cv2.VideoWriter('demonstration.avi', cv2.VideoWriter_fourcc(*'MJPG'), 10, (1280, 720))
 
-    width, height = 1280, 720
-    center_x, center_y = (width//2, height//2) # center of the frame
     obstructed = 0
 
     zed, init_params, image, runtime_parameters, zed_pointcloud = zedSetup()
@@ -194,8 +118,6 @@ def main():
     if err != sl.ERROR_CODE.SUCCESS:
       print("Camera open: " + repr(err) + ". Exit program.")
       unavaliable()
-
-    STATUS = 1
 
     while True:
       #print(STATUS)
@@ -243,7 +165,7 @@ def main():
 
   except KeyboardInterrupt:
     zed.close()
-    disarm()
+    r.disarm()
  
 if __name__ == "__main__":
   main()
