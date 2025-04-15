@@ -72,22 +72,22 @@ def avoidObstacle():
   # print("Now in GUIDED mode")
 
   # turn right
-  r.send_rc_command(RC_NEUTRAL+200, RC_NEUTRAL)
+  r.send_rc_command(master, RC_NEUTRAL+200, RC_NEUTRAL)
   time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
 
   # continue straight
-  r.send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+  r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL)
   time.sleep(.2)
-  r.send_rc_command(RC_NEUTRAL, RC_NEUTRAL+200)
+  r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL+200)
   time.sleep(1) #seconds
 
   # turn left
-  r.send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+  r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL)
   time.sleep(.2)
-  r.send_rc_command(RC_NEUTRAL-200, RC_NEUTRAL)
+  r.send_rc_command(master, RC_NEUTRAL-200, RC_NEUTRAL)
   time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
 
-  r.send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+  r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL)
 
   # # Switch back to AUTO mode
   # master.mav.set_mode_send(
@@ -99,7 +99,7 @@ def avoidObstacle():
   return 1
 
 def unavaliable():
-  r.disarm()
+  r.disarm(master)
   while(1):
     print("Autonomy Unavaliable")
     time.sleep(5)
@@ -107,7 +107,7 @@ def unavaliable():
 def main():
   try:
 
-    r.arm_vehicle()
+    r.arm_vehicle(master)
 
     # out = cv2.VideoWriter('demonstration.avi', cv2.VideoWriter_fourcc(*'MJPG'), 10, (1280, 720))
 
@@ -165,7 +165,7 @@ def main():
 
   except KeyboardInterrupt:
     zed.close()
-    r.disarm()
+    r.disarm(master)
  
 if __name__ == "__main__":
   main()

@@ -6,7 +6,7 @@ RC_NEUTRAL = 1500
 RC_MIN = 1000
 RC_MAX = 2000
 
-def send_rc_command(left_motor, right_motor, propeller_1=1500, propeller_2=1500):
+def send_rc_command(master, left_motor, right_motor, propeller_1=1500, propeller_2=1500):
     """
     Sends RC override commands to the specified channels.
     """
@@ -28,11 +28,11 @@ def send_rc_command(left_motor, right_motor, propeller_1=1500, propeller_2=1500)
         0, 0, 0, 0   # Channels 7 to 10 - Unused
     )
 
-def is_armed():
+def is_armed(master):
     msg = master.recv_match(type="HEARTBEAT", blocking=True)
     return msg.base_mode & mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED
 
-def arm_vehicle():
+def arm_vehicle(master):
     print("Arming rover...")
 
     master.mav.param_set_send(
@@ -49,7 +49,7 @@ def arm_vehicle():
         time.sleep(1)
     print("Rover armed!")
 
-def disarm_vehicle():
+def disarm_vehicle(master):
     print("Disarming rover...")
     master.arducopter_disarm()
     time.sleep(1)
