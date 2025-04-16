@@ -21,11 +21,12 @@ def send_rc_command(master, left_motor, right_motor, propeller_1=1500, propeller
         master.target_system,
         master.target_component,
         left_motor,  # Channel 1 - Left motor
+        0,
         right_motor, # Channel 3 - Right motor
         propeller_1, # Channel 4 - Propeller 1
         0,           # Channel 5 - Unused
         propeller_2, # Channel 6 - Propeller 2
-        0, 0, 0, 0   # Channels 7 to 10 - Unused
+        0, 0, 0  # Channels 7 to 10 - Unused
     )
 
 def is_armed(master):
@@ -42,18 +43,18 @@ def arm_vehicle(master):
     mavutil.mavlink.MAV_PARAM_TYPE_INT32)
 
     master.arducopter_arm()
-    send_rc_command(RC_NEUTRAL, RC_NEUTRAL)
+    send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL)
     time.sleep(1)
-    while not is_armed():
+    while not is_armed(master):
         print("Waiting for arming...")
         time.sleep(1)
     print("Rover armed!")
 
-def disarm_vehicle(master):
+def disarm(master):
     print("Disarming rover...")
     master.arducopter_disarm()
     time.sleep(1)
-    while is_armed():
+    while is_armed(master):
         print("Waiting for disarm...")
         time.sleep(1)
     print("Rover disarmed.")

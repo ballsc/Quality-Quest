@@ -1,5 +1,5 @@
 #from ultralytics import YOLO
-import cv2
+# import cv2
 import pyzed.sl as sl
 import math
 import numpy as np
@@ -9,12 +9,12 @@ import rover_h as r
 
 from pymavlink import mavutil
 
-MAX_U = 450 ## between 0 and 719
+MAX_U = 500 ## between 0 and 719
 MIN_U = 200
 MAX_V = 750 ## between 0 and 1279
 MIN_V = 530
 
-TURN_DELAY = 2 #seconds
+TURN_DELAY = 1 #seconds
 
 # Constants for RC values
 RC_NEUTRAL = 1500
@@ -60,31 +60,31 @@ def avoidObstacle():
   # master.mav.set_mode_send(
   #     master.target_system,
   #     mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
-  #     15  # GUIDED mode for ArduRover typically mode ID 15
+  #     master.mode_mapping()['MANUAL']
   # )
 
   # Confirm mode change
   # ack = False
   # while not ack:
   #     ack_msg = master.recv_match(type='HEARTBEAT', blocking=True, timeout=3)
-  #     if ack_msg and mavutil.mode_string_v10(ack_msg) == "GUIDED":
+  #     if ack_msg and mavutil.mode_string_v10(ack_msg) == "MANUAL":
   #         ack = True
   # print("Now in GUIDED mode")
 
   # turn right
-  r.send_rc_command(master, RC_NEUTRAL+200, RC_NEUTRAL)
+  r.send_rc_command(master, RC_NEUTRAL+350, RC_NEUTRAL)
   time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
 
   # continue straight
   r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL)
   time.sleep(.2)
   r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL+200)
-  time.sleep(1) #seconds
+  time.sleep(2) #seconds
 
   # turn left
   r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL)
   time.sleep(.2)
-  r.send_rc_command(master, RC_NEUTRAL-200, RC_NEUTRAL)
+  r.send_rc_command(master, RC_NEUTRAL-350, RC_NEUTRAL)
   time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
 
   r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL)
@@ -102,6 +102,7 @@ def unavaliable():
   r.disarm(master)
   print("Autonomy Unavaliable")
   time.sleep(5)
+  return 1
 
 def startPath():
   print("Going!")
@@ -115,20 +116,21 @@ def main():
 
     obstructed = 0
     unable = 0
+    temp = 0
 
     zed, init_params, image, runtime_parameters, zed_pointcloud = zedSetup()
     err = zed.open(init_params)
     if err != sl.ERROR_CODE.SUCCESS:
       print("Camera open: " + repr(err) + ". Exit program.")
-      unavaliable()
+      unable = unavaliable()
 
-    while True:
+    while True and not unable:
       #print(STATUS)
       ## TODO: make send status to flight controller
 
       if zed.grab(runtime_parameters) == sl.ERROR_CODE.SUCCESS:
         zed.retrieve_image(image, sl.VIEW.LEFT)
-        cvimg = image.get_data()
+        #cvimg = image.get_data()
         #img = cv2.cvtColor(cvimg, cv2.COLOR_RGBA2RGB)
 
         zed.retrieve_measure(zed_pointcloud, sl.MEASURE.XYZRGBA)
@@ -141,18 +143,17 @@ def main():
 
         pathObstructed = closePoint < 2000
 
-        if closePoint < 300:
-          unable += 1
-        else:
-          unable -= 1
-          unable = max(unable, 0)
-
-        if unable > 20:
-          print("Path is obstructed")
-          unavaliable()
-          break
-
         print("Distance to object: ", closePoint)
+
+        if closePoint < 500:
+          temp += 1
+        else:
+          temp -= 1
+          temp = max(temp, 0)
+
+        if temp > 20:
+          print("Path is obstructed")
+          unable = unavaliable()
 
         #cv2.rectangle(img, (MIN_V, MIN_U), (MAX_V, MAX_U), (0, 0, 0), 2)
 
@@ -173,8 +174,8 @@ def main():
       #cv2.imshow("Detection and Path", img)
       # out.write(img)
 
-      if cv2.waitKey(20) == 27:
-        break
+      #if cv2.waitKey(20) == 27:
+      #  break
     
 
   except KeyboardInterrupt:
