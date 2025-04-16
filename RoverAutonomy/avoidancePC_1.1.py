@@ -1,4 +1,3 @@
-#from ultralytics import YOLO
 # import cv2
 import pyzed.sl as sl
 import math
@@ -9,21 +8,10 @@ import rover_h as r
 
 from pymavlink import mavutil
 
-MAX_U = 500 ## between 0 and 719
-MIN_U = 200
-MAX_V = 750 ## between 0 and 1279
-MIN_V = 530
-
-TURN_DELAY = 1 #seconds
-
-# Constants for RC values
+MAX_U, MIN_U, MAX_V, MIN_V = 450, 200, 750, 530
+TURN_DELAY = 1  # seconds
 RC_NEUTRAL = 1500
-RC_MIN = 1000
-RC_MAX = 2000
-
-# Connection parameters
-PORT = "/dev/ttyACM0"  # Adjust as per your CubePilot's port
-BAUDRATE = 115200
+PORT, BAUDRATE = "/dev/ttyACM0", 115200
 
  # Connect to the CubePilot Rover
 print("Connecting to CubePilot Rover...")
@@ -54,9 +42,7 @@ def avoidObstacle():
   print("")
   print("Avoiding obstacle")
   print("")
-  ## TODO: FINISH, Check with COOPER if code is syntax with his
 
-  # # Switch to GUIDED mode
   # master.mav.set_mode_send(
   #     master.target_system,
   #     mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
@@ -103,9 +89,6 @@ def unavaliable():
   print("Autonomy Unavaliable")
   time.sleep(5)
   return 1
-
-def startPath():
-  print("Going!")
 
 def main():
   try:

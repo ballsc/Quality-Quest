@@ -1,119 +1,156 @@
-from pymavlink import mavutil
-import cv2
+# import cv2
 import pyzed.sl as sl
+import math
 import numpy as np
+import sys
 import time
 import rover_h as r
+
+from pymavlink import mavutil
 
 MAX_U, MIN_U, MAX_V, MIN_V = 450, 200, 750, 530
 TURN_DELAY = 1  # seconds
 RC_NEUTRAL = 1500
 PORT, BAUDRATE = "/dev/ttyACM0", 115200
 
+ # Connect to the CubePilot Rover
+print("Connecting to CubePilot Rover...")
 master = mavutil.mavlink_connection(PORT, baud=BAUDRATE)
+
+# Wait for heartbeat
+print("Waiting for heartbeat...")
 master.wait_heartbeat()
+print(f"Connected to system {master.target_system}, component {master.target_component}")
 
-# Mode switching utility
-def set_mode(mode_str):
-    mode_id = master.mode_mapping()[mode_str]
-    master.set_mode(mode_id)
-    while True:
-        ack_msg = master.recv_match(type='HEARTBEAT', blocking=True, timeout=3)
-        if ack_msg and mavutil.mode_string_v10(ack_msg) == mode_str:
-            print(f"Now in {mode_str} mode")
-            break
+def set_mode(mode):
+  mode_id = master.mode_mapping()[mode]
+  master.set_mode(mode_id)
+  while True:
+    msg = master.recv_match(type="HEARTBEAT", blocking=True, timeout=3)
+    if msg and mavutil.mode_string_v10(msg) == mode:
+      print(f"Now in {mode} mode")
+      break
 
-# Get current waypoint index
 def get_current_wp():
-    master.mav.mission_request_list_send(master.target_system, master.target_component)
-    while True:
-        msg = master.recv_match(type='MISSION_CURRENT', blocking=True, timeout=3)
-        if msg:
-            return msg.seq
+  master.mav.mission_request_list_send(master.target_system, master.target_component)
+  while True:
+    msg = master.recv_match(type="MISSION_CURRENT", blocking=True, timeout=3)
+    if msg:
+      return msg.seq
 
-# ZED setup
 def zedSetup():
-    zed = sl.Camera()
-    init_params = sl.InitParameters()
-    init_params.camera_resolution = sl.RESOLUTION.AUTO
-    init_params.camera_fps = 15  
-    init_params.depth_mode = sl.DEPTH_MODE.ULTRA
-    return zed, init_params, sl.Mat(), sl.RuntimeParameters(), sl.Mat()
 
-# Avoid obstacle sequence
+  zed = sl.Camera()
+
+  filepath = "./zed_recordings/recording3s.svo2" # Path to the .svo file to be playbacked
+  input_type = sl.InputType()
+  input_type.set_from_svo_file(filepath)  #Set init parameter to run from the .svo 
+  # init_params = sl.InitParameters(input_t=input_type, svo_real_time_mode=False) # uncomment for .svo2 
+  init_params = sl.InitParameters() # uncomment for actual camera
+  init_params.camera_resolution = sl.RESOLUTION.AUTO # Use HD720 or HD1200 video mode, depending on camera type.
+  init_params.camera_fps = 15  
+  init_params.depth_mode = sl.DEPTH_MODE.ULTRA
+
+  return zed, init_params, sl.Mat(), sl.RuntimeParameters(), sl.Mat()
+
 def avoidObstacle():
-    print("Avoiding obstacle")
-    set_mode("GUIDED")
+  print("")
+  print("Avoiding obstacle")
+  print("")
 
-    # Turn right
-    r.send_rc_command(master, RC_NEUTRAL + 200, RC_NEUTRAL)
-    time.sleep(TURN_DELAY)
+  set_mode("MANUAL")
 
-    # Move straight
-    r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL + 200)
-    time.sleep(1)
+  # turn right
+  r.send_rc_command(master, RC_NEUTRAL + 350, RC_NEUTRAL)
+  time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
 
-    # Turn left
-    r.send_rc_command(master, RC_NEUTRAL - 200, RC_NEUTRAL)
-    time.sleep(TURN_DELAY)
+  # continue straight
+  r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL)
+  time.sleep(.3)
+  r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL+200)
+  time.sleep(2) #seconds
 
-    # Reset to neutral
-    r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL)
+  # turn left
+  r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL)
+  time.sleep(.3)
+  r.send_rc_command(master, RC_NEUTRAL-350, RC_NEUTRAL)
+  time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
 
-# Main function
+  r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL)
+
+  return 1
+
 def main():
-    try:
-        r.arm_vehicle(master)
+  try:
 
-        zed, init_params, image, runtime_parameters, zed_pointcloud = zedSetup()
-        err = zed.open(init_params)
-        if err != sl.ERROR_CODE.SUCCESS:
-            print("Camera open error.")
-            return
+    r.arm_vehicle(master)
 
-        set_mode("AUTO")
-        obstructed = unable = 0
+    # out = cv2.VideoWriter('demonstration.avi', cv2.VideoWriter_fourcc(*'MJPG'), 10, (1280, 720))
 
-        while True:
-            if zed.grab(runtime_parameters) == sl.ERROR_CODE.SUCCESS:
-                zed.retrieve_measure(zed_pointcloud, sl.MEASURE.XYZRGBA)
-                np_pointcloud = zed_pointcloud.get_data()
-                np_pointcloud = np_pointcloud[MIN_U:MAX_U, MIN_V:MAX_V, :3]
+    obstructed = unable = 0
 
-                np_distance = np.sqrt(np.sum(np_pointcloud ** 2, axis=2))
-                closePoint = np.nanmin(np_distance)
+    zed, init_params, image, runtime_parameters, zed_pointcloud = zedSetup()
+    err = zed.open(init_params)
+    if err != sl.ERROR_CODE.SUCCESS:
+      print("Camera open: " + repr(err) + ". Exit program.")
+      r.disarm()
+      return
+    
+    set_mode("AUTO")
 
-                pathObstructed = closePoint < 2000
+    while True and not unable:
+      #print(STATUS)
+      ## TODO: make send status to flight controller
 
-                unable = unable + 1 if closePoint < 300 else max(unable - 1, 0)
+      if zed.grab(runtime_parameters) == sl.ERROR_CODE.SUCCESS:
+        zed.retrieve_image(image, sl.VIEW.LEFT)
+        #cvimg = image.get_data()
+        #img = cv2.cvtColor(cvimg, cv2.COLOR_RGBA2RGB)
 
-                if unable > 20:
-                    print("Path completely obstructed")
-                    r.disarm(master)
-                    break
+        zed.retrieve_measure(zed_pointcloud, sl.MEASURE.XYZRGBA)
+        np_pointcloud = zed_pointcloud.get_data()
+        np_pointcloud = np_pointcloud[MIN_U:MAX_U, MIN_V:MAX_V, :3] # convert pointcloud to interest dimensions
 
-                obstructed = obstructed + 1 if pathObstructed else max(obstructed - 1, 0)
+        np_distance = np.sqrt(np.sum(np_pointcloud ** 2, axis = 2)) # create array of distances
 
-                if obstructed > 15:
-                    current_wp = get_current_wp()
-                    print(f"Obstacle detected at waypoint {current_wp}, starting avoidance.")
-                    avoidObstacle()
+        closePoint = np.nanmin(np_distance)
 
-                    # Resume AUTO at waypoint after avoidance
-                    master.mav.mission_set_current_send(master.target_system, master.target_component, current_wp)
-                    set_mode("AUTO")
-                    print(f"Resumed AUTO mode at waypoint {current_wp}")
+        pathObstructed = closePoint < 2000
 
-                    obstructed = -15
+        print("Distance to object: ", closePoint)
 
-            if cv2.waitKey(20) == 27:
-                break
+        unable = unable + 1 if closePoint < 500 else max(unable-1, 0)
+        if unable > 20:
+          print("Path obstructed")
+          r.disarm(master)
+          break
 
-    except KeyboardInterrupt:
-        pass
-    finally:
-        zed.close()
-        r.disarm(master)
+        #cv2.rectangle(img, (MIN_V, MIN_U), (MAX_V, MAX_U), (0, 0, 0), 2)
 
+        obstructed = obstructed + 1 if pathObstructed else max(obstructed-1, -15)
+
+        #cv2.putText(img, str(closePoint)[0:4] + " mm", (center_x, center_y), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2, cv2.LINE_AA)
+
+        if obstructed > 15:
+          current_wp = get_current_wp()
+          avoidObstacle()
+
+          master.mav.mission_set_current_send(master.target_system, master.target_component, current_wp)
+          set_mode("AUTO")
+          print(f"Resumed AUTO mode")
+
+          obstructed = -15
+
+      #cv2.imshow("Detection and Path", img)
+      # out.write(img)
+
+      #if cv2.waitKey(20) == 27:
+      #  break
+    
+
+  except KeyboardInterrupt:
+    zed.close()
+    r.disarm(master)
+ 
 if __name__ == "__main__":
-    main()
+  main()
