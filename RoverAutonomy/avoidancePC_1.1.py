@@ -100,9 +100,11 @@ def avoidObstacle():
 
 def unavaliable():
   r.disarm(master)
-  while(1):
-    print("Autonomy Unavaliable")
-    time.sleep(5)
+  print("Autonomy Unavaliable")
+  time.sleep(5)
+
+def startPath():
+  print("Going!")
 
 def main():
   try:
@@ -112,6 +114,7 @@ def main():
     # out = cv2.VideoWriter('demonstration.avi', cv2.VideoWriter_fourcc(*'MJPG'), 10, (1280, 720))
 
     obstructed = 0
+    unable = 0
 
     zed, init_params, image, runtime_parameters, zed_pointcloud = zedSetup()
     err = zed.open(init_params)
@@ -137,6 +140,17 @@ def main():
         closePoint = np.nanmin(np_distance)
 
         pathObstructed = closePoint < 2000
+
+        if closePoint < 300:
+          unable += 1
+        else:
+          unable -= 1
+          unable = max(unable, 0)
+
+        if unable > 20:
+          print("Path is obstructed")
+          unavaliable()
+          break
 
         print("Distance to object: ", closePoint)
 
