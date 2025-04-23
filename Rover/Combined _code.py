@@ -106,8 +106,8 @@ def wait_for_waypoint_reached_and_loiter(seq):
         if msg and msg.seq == seq:
             print(f"[MISSION] reached WP {seq}, loitering for sensor test")
             #set_mode("LOITER")
-            run_sensor_test()
-            set_mode("AUTO")
+            # run_sensor_test()
+            # set_mode("AUTO")
             break
 
 def set_home_location():
@@ -177,8 +177,8 @@ def zed_setup():
     zed = sl.Camera()
     init = sl.InitParameters()
     init.camera_resolution = sl.RESOLUTION.AUTO
-    init.camera_fps        = 15
-    init.depth_mode        = sl.DEPTH_MODE.ULTRA
+    init.camera_fps = 15
+    init.depth_mode = sl.DEPTH_MODE.ULTRA
     return zed, init, sl.Mat(), sl.RuntimeParameters(), sl.Mat()
 
 def avoid_obstacle():
@@ -234,7 +234,9 @@ def monitor_obstacle_thread():
 if __name__ == "__main__":
     try:
     # 1) Pre‐flight
+        r.arm_vehicle(master)
         set_home_location()
+        r.disarm(master)
     # Optional debug info
     # get_firmware_version(); get_rc_channels(); get_system_status()
     # 2) Start background monitors
@@ -247,7 +249,7 @@ if __name__ == "__main__":
             (33.473931657832495, -88.79028720462831)
         ]
         upload_mission(waypoints)
-        r.arm_vehicle(master)  
+        r.arm_vehicle(master)
         set_mode("AUTO")
         master.mav.command_long_send(
             master.target_system, master.target_component,
