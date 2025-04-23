@@ -73,6 +73,7 @@ def upload_mission(waypoints):
         )
     print(f"[MISSION] Uploaded {len(waypoints)} waypoints")
 
+"""
 def run_sensor_test(duration=60, post_delay=120):
     try:
         ser = serial.Serial(WATER_SENSOR_PORT, BAUD_RATE, timeout=1)
@@ -98,7 +99,7 @@ def run_sensor_test(duration=60, post_delay=120):
         print(f"[SENSOR] error: {e}")
     finally:
         ser.close()
-
+"""
 def wait_for_waypoint_reached_and_loiter(seq):
     print(f"[MISSION] waiting for WP {seq}")
     while True:
@@ -106,7 +107,7 @@ def wait_for_waypoint_reached_and_loiter(seq):
         if msg and msg.seq == seq:
             print(f"[MISSION] reached WP {seq}, loitering for sensor test")
             #set_mode("LOITER")
-            # run_sensor_test()
+            
             # set_mode("AUTO")
             break
 
