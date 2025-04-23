@@ -8,7 +8,7 @@ import rover_h as r
 
 from pymavlink import mavutil
 
-MAX_U, MIN_U, MAX_V, MIN_V = 450, 200, 750, 530
+MAX_U, MIN_U, MAX_V, MIN_V = 350, 100, 750, 530
 TURN_DELAY = 1  # seconds
 RC_NEUTRAL = 1500
 PORT, BAUDRATE = "/dev/ttyACM0", 115200

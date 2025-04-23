@@ -18,8 +18,7 @@ VEHICLE_PORT       = '/dev/ttyACM0'   # MAVLink port
 BAUD_RATE          = 115200
 
 # ZED camera ROI & timing
-MIN_U, MAX_U = 200, 450
-MIN_V, MAX_V = 530, 750
+MAX_U, MIN_U, MAX_V, MIN_V = 350, 100, 750, 530
 TURN_DELAY    = 1  # seconds to turn ~90°
 
 # === Vehicle & Sensor Setup ===
