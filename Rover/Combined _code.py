@@ -13,8 +13,8 @@ from pymavlink import mavutil
 import rover_h as r  
 
 # === Configuration ===
-VEHICLE_PORT       = '/dev/ttyACM1'   # MAVLink port
-WATER_SENSOR_PORT  = '/dev/ttyACM0'   # Serial port for water sensor
+VEHICLE_PORT       = '/dev/ttyACM0'   # MAVLink port
+#WATER_SENSOR_PORT  = '/dev/ttyACM0'   # Serial port for water sensor
 BAUD_RATE          = 115200
 
 # ZED camera ROI & timing
@@ -27,7 +27,7 @@ master = mavutil.mavlink_connection(VEHICLE_PORT, baud=BAUD_RATE)
 master.wait_heartbeat()
 print(f"[MAV] Connected to system {master.target_system}, component {master.target_component}")
 
-water_ser = serial.Serial(WATER_SENSOR_PORT, BAUD_RATE, timeout=1)
+#water_ser = serial.Serial(WATER_SENSOR_PORT, BAUD_RATE, timeout=1)
 time.sleep(2)  # allow serial to warm up
 
 # === MAVLink Utility Functions (from Waypoint.py) :contentReference[oaicite:10]{index=10}&#8203;:contentReference[oaicite:11]{index=11} ===
@@ -73,33 +73,6 @@ def upload_mission(waypoints):
         )
     print(f"[MISSION] Uploaded {len(waypoints)} waypoints")
 
-def wait_for_waypoint_reached_and_loiter(seq):
-    print(f"[MISSION] waiting for WP {seq}")
-    while True:
-        msg = master.recv_match(type='MISSION_ITEM_REACHED', blocking=True, timeout=60)
-        if msg and msg.seq == seq:
-            print(f"[MISSION] reached WP {seq}, loitering for sensor test")
-            set_mode("LOITER")
-            run_sensor_test()
-            set_mode("AUTO")
-            break
-
-def set_home_location():
-    print("[HOME] setting current GPS fix as home")
-    msg = master.recv_match(type="GPS_RAW_INT", blocking=True, condition="fix_type>=3", timeout=10)
-    if not msg:
-        print("[HOME] no valid fix; skipping")
-        return
-    lat = msg.lat/1e7
-    lon = msg.lon/1e7
-    master.mav.command_long_send(
-        master.target_system, master.target_component,
-        mavutil.mavlink.MAV_CMD_DO_SET_HOME,
-        0, 0,0,0,0, lat, lon, 0
-    )
-    print(f"[HOME] set to ({lat:.7f}, {lon:.7f})")
-
-
 def run_sensor_test(duration=60, post_delay=120):
     try:
         ser = serial.Serial(WATER_SENSOR_PORT, BAUD_RATE, timeout=1)
@@ -125,6 +98,53 @@ def run_sensor_test(duration=60, post_delay=120):
         print(f"[SENSOR] error: {e}")
     finally:
         ser.close()
+
+def wait_for_waypoint_reached_and_loiter(seq):
+    print(f"[MISSION] waiting for WP {seq}")
+    while True:
+        msg = master.recv_match(type='MISSION_ITEM_REACHED', blocking=True, timeout=60)
+        if msg and msg.seq == seq:
+            print(f"[MISSION] reached WP {seq}, loitering for sensor test")
+            #set_mode("LOITER")
+            run_sensor_test()
+            set_mode("AUTO")
+            break
+
+def set_home_location():
+    print("[HOME] waiting for a valid GPS fix…")
+    # loop until we actually see fix_type >= 3
+    while True:
+        msg = master.recv_match(
+            type='GPS_RAW_INT',
+            blocking=True,
+            timeout=1
+        )
+        if msg and msg.fix_type >= 3:
+            break
+
+    lat = msg.lat / 1e7
+    lon = msg.lon / 1e7
+    alt = msg.alt / 1e3     # convert mm → m
+
+    print(f"[HOME] GPS fix acquired at {lat:.7f}, {lon:.7f}, {alt:.1f} m")
+    # set home to *exactly* here
+    master.mav.command_long_send(
+        master.target_system, master.target_component,
+        mavutil.mavlink.MAV_CMD_DO_SET_HOME,
+        0,      # confirmation
+        1, 0,0,0,  # param1=1 → “use current location”
+        0, 0, 0   # (ignored)
+    )
+
+    # check ACK
+    ack = master.recv_match(type='COMMAND_ACK', blocking=True, timeout=5)
+    if ack and ack.command == mavutil.mavlink.MAV_CMD_DO_SET_HOME:
+        if ack.result == mavutil.mavlink.MAV_RESULT_ACCEPTED:
+            print("[HOME] home position successfully set")
+        else:
+            print(f"[HOME] set-home rejected: result={ack.result}")
+    else:
+        print("[HOME] no ACK received for set-home")
 
 
 is_in_water = False
@@ -168,7 +188,7 @@ def avoid_obstacle():
     r.send_rc_command(master, 1850,1500)  
     time.sleep(TURN_DELAY)
     # forward-right
-    r.send_rc_command(master,1500,1500,1500,1700)
+    r.send_rc_command(master,1500,1500)
     time.sleep(2)
     # smooth 90° left
     r.send_rc_command(master,1500,1500)
@@ -212,36 +232,41 @@ def monitor_obstacle_thread():
 
 # === Main Mission Flow ===
 if __name__ == "__main__":
+    try:
     # 1) Pre‐flight
-    set_home_location()
+        set_home_location()
     # Optional debug info
     # get_firmware_version(); get_rc_channels(); get_system_status()
     # 2) Start background monitors
-    threading.Thread(target=monitor_water_sensor, daemon=True).start()
-    threading.Thread(target=monitor_obstacle_thread, daemon=True).start()
+    #    threading.Thread(target=monitor_water_sensor, daemon=True).start()
+    #    threading.Thread(target=monitor_obstacle_thread, daemon=True).start()
 
     # 3) Upload & launch mission
-    waypoints = [
-        (33.47402601015357, -88.79105116751667),
-        (33.47396155597528, -88.79043167074497)
-    ]
-    upload_mission(waypoints)
-    r.arm_vehicle(master)  
-    set_mode("AUTO")
-    master.mav.command_long_send(
-        master.target_system, master.target_component,
-        mavutil.mavlink.MAV_CMD_MISSION_START,
-        0,0,0,0,0,0,0,0
-    )
-    print("[MISSION] started")
+        waypoints = [
+            (33.47401138270369, -88.79087958741471),
+            (33.473931657832495, -88.79028720462831)
+        ]
+        upload_mission(waypoints)
+        r.arm_vehicle(master)  
+        set_mode("AUTO")
+        master.mav.command_long_send(
+            master.target_system, master.target_component,
+            mavutil.mavlink.MAV_CMD_MISSION_START,
+            0,0,0,0,0,0,0,0
+        )
+        print("[MISSION] started")
 
-    # 4) At each waypoint loiter & log sensors
-    for seq in range(len(waypoints)):
-        wait_for_waypoint_reached_and_loiter(seq)
+        # 4) At each waypoint loiter & log sensors
+        for seq in range(len(waypoints)):
+            wait_for_waypoint_reached_and_loiter(seq)
 
-    # 5) Return & disarm
-    set_mode("RTL")
-    print("[MISSION] returning home, waiting 5min")
-    time.sleep(300)
-    r.disarm(master)
-    print("[MISSION] complete. Goodbye.")
+        # 5) Return & disarm
+        set_mode("RTL")
+        print("[MISSION] returning home, waiting 5min")
+        time.sleep(300)
+        r.disarm(master)
+        print("[MISSION] complete. Goodbye.")
+
+    except KeyboardInterrupt:
+        # zed.close()
+        r.disarm(master)
