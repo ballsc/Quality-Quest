@@ -105,10 +105,15 @@ def wait_for_waypoint_reached_and_loiter(seq):
     while True:
         msg = master.recv_match(type='MISSION_ITEM_REACHED', blocking=True, timeout=60)
         if msg and msg.seq == seq:
-            print(f"[MISSION] reached WP {seq}, loitering for sensor test")
-            #set_mode("LOITER")
-            
-            # set_mode("AUTO")
+            print(f"[MISSION] reached WP {seq}")
+            set_mode("LOITER")
+            # Run external script and check exit code
+            exit_code = os.system("sudo python3 /git/Quality-Quest/Rover/Data/Serial.py")
+            if exit_code == 0:
+                print("[MISSION] external script succeeded, switching back to AUTO")
+                set_mode("AUTO")
+            else:
+                print(f"[MISSION] external script failed with exit code {exit_code}, remaining in LOITER")
             break
 
 def set_home_location():
