@@ -6,10 +6,7 @@ import numpy as np
 import sys
 import math
 
-MAX_U = 450 ## between 0 and 719
-MIN_U = 160
-MAX_V = 750 ## between 0 and 1279
-MIN_V = 530
+MAX_U, MIN_U, MAX_V, MIN_V = 350, 100, 750, 530
  
 ## OVERALL TODO:
 ## Calibrate Magnetometer

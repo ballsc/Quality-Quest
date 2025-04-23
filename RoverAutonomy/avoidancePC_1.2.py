@@ -8,7 +8,7 @@ import rover_h as r
 
 from pymavlink import mavutil
 
-MAX_U, MIN_U, MAX_V, MIN_V = 450, 200, 750, 530
+MAX_U, MIN_U, MAX_V, MIN_V = 350, 100, 750, 530
 TURN_DELAY = 1  # seconds
 RC_NEUTRAL = 1500
 PORT, BAUDRATE = "/dev/ttyACM0", 115200
@@ -67,7 +67,7 @@ def avoidObstacle():
   # continue straight
   r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL)
   time.sleep(.3)
-  r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL+200)
+  r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL+350)
   time.sleep(2) #seconds
 
   # turn left
@@ -77,6 +77,8 @@ def avoidObstacle():
   time.sleep(TURN_DELAY) # test how long to turn 90 deg, set TURN_DELAY to this
 
   r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL)
+  time.sleep(.3)
+  r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL+200)
 
   return 1
 
@@ -96,7 +98,8 @@ def main():
       r.disarm()
       return
     
-    set_mode("AUTO")
+    # set_mode("AUTO")
+    r.send_rc_command(master, RC_NEUTRAL, RC_NEUTRAL+200)
 
     while True and not unable:
       #print(STATUS)
@@ -132,12 +135,12 @@ def main():
         #cv2.putText(img, str(closePoint)[0:4] + " mm", (center_x, center_y), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2, cv2.LINE_AA)
 
         if obstructed > 15:
-          current_wp = get_current_wp()
+          # current_wp = get_current_wp()
           avoidObstacle()
 
-          master.mav.mission_set_current_send(master.target_system, master.target_component, current_wp)
-          set_mode("AUTO")
-          print(f"Resumed AUTO mode")
+          # master.mav.mission_set_current_send(master.target_system, master.target_component, current_wp)
+          # set_mode("AUTO")
+          # print(f"Resumed AUTO mode")
 
           obstructed = -15
 
