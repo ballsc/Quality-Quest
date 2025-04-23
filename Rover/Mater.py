@@ -67,6 +67,7 @@ def upload_mission(the_connection, mission_items):
         len(mission_items), 0
     )
     ack(the_connection, "MISSION_REQUEST")
+
     for waypoint in mission_items:
         print("-- Creating waypoint {}".format(waypoint.seq))
         the_connection.mav.mission_item_send(
@@ -76,9 +77,9 @@ def upload_mission(the_connection, mission_items):
             waypoint.param4, waypoint.param5, waypoint.param6, waypoint.param7,
             waypoint.mission_type
         )
-        if waypoint == mission_items[-1]:
-            ack(the_connection, "MISSION_REQUEST")
+
     ack(the_connection, "MISSION_ACK")
+
 
 def set_return(the_connection):
     print("-- Set Return To Launch")
@@ -106,7 +107,7 @@ def ack(the_connection, keyword):
 # === Main ===
 if __name__ == "__main__":
     print("-- Program Started")
-    the_connection = mavutil.mavlink_connection('/dev/ttyACM0', baud=115200)
+    the_connection = mavutil.mavlink_connection('/dev/ttyACM1', baud=115200)
 
     try:
         while the_connection.target_system == 0:
@@ -118,6 +119,7 @@ if __name__ == "__main__":
 
         mission_waypoints = []
         mission_waypoints.append(mission_item(0, 0, 33.47402027300395, -88.79094159193298, 92))
+        mission_waypoints.append(mission_item(0, 0, 33.47398111977065, -88.79058619923738, 92))
 
         upload_mission(the_connection, mission_waypoints)
         arm(the_connection)
@@ -137,7 +139,7 @@ if __name__ == "__main__":
             exit_code = os.system("python3 collect_data.py")
             while exit_code != 0:
                 print("-- Script failed with exit code {}. Retrying...".format(exit_code))
-                exit_code = os.system("audo python3 /git/Quality-Quest/Data/Serial.py")
+                exit_code = os.system("sudo python3 /git/Quality-Quest/Data/Serial.py")
 
             print("-- Script at waypoint {} finished with code {}".format(mission_item.seq, exit_code))
 
