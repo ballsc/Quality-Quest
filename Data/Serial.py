@@ -4,7 +4,7 @@ import serial, time, csv, os
 from datetime import datetime
 
 # === Settings ===
-COM_PORT = 'COM9'  # CHANGE THIS to your correct port
+COM_PORT = '/dev/ttyACM2'  # CHANGE THIS to your correct port
 BAUD_RATE = 115200
 COLLECT_DURATION = 60  # seconds for sensor data collection
 TOTAL_DURATION = 180  # time window before force clos
